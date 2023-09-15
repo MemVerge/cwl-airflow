@@ -119,12 +119,42 @@ class CWLDAG(DAG):
 
         task_by_id = {}         # to get airflow task assosiated with workflow step by its id
         task_by_out_id = {}     # to get airflow task assosiated with workflow step by its out id
-        
+
+        ## can i get DockerRequirement in the workflow_tool and build an executor_config?
+
         for step_id, step_data in get_items(self.workflow_tool["steps"]):
-            task_by_id[step_id] = CWLStepOperator(dag=self, task_id=step_id)
+            # would dockerRequirement be in the step_data?
+            # get dockerRequirement from step_data and check whether local is specified
+            # also need to get ResourceRequirement
+
+            ####### Modified
+            executor_config = {}
+            run = step_data["run"]
+            for _, reqs in get_items(run, "requirements"):
+                for req in reqs:
+                    if req["class"] == "DockerRequirement":
+                        executor_config["image"] = req["dockerPull"]
+                    if req["class"] == "ResourceRequirement":
+                        if "ramMin" in req:
+                            executor_config["mem"] = req["ramMin"]
+                        if 'cpuReq' in req:
+                            executor_config["cpu"] = req["coresMin"]
+                    
+            for _, hints in get_items(run, "hints"):
+                for hint in hints:
+                    if hint["class"] == "ResourceRequirement":
+                        if "ramMin" in hint:
+                            memReq = max(int(hint["ramMin"]), int(executor_config.get("mem",'4096')))
+                            executor_config["mem"] = f'{memReq}'
+                        if 'coresMin' in hint:
+                            cpuReq = max(int(hint["coresMin"]), int(executor_config.get("cpu",'2')))
+                            executor_config["cpu"] = f'{cpuReq}'
+            print(f"Executor_config: {executor_config}")
+            ####### Modified
+            task_by_id[step_id] = CWLStepOperator(dag=self, task_id=step_id, executor_config=executor_config)
             for step_out_id, _ in get_items(step_data["out"]):
                 task_by_out_id[step_out_id] = task_by_id[step_id]
-
+        
         for step_id, step_data in get_items(self.workflow_tool["steps"]):
             for step_in_id, step_in_data in get_items(step_data.get("in", [])):           # step might not have "in"
                 for step_in_source, _ in get_items(step_in_data.get("source", [])):       # "in" might not have "source"
