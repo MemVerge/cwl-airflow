@@ -149,7 +149,6 @@ class CWLDAG(DAG):
                         if 'coresMin' in hint:
                             cpuReq = max(int(hint["coresMin"]), int(executor_config.get("cpu",'2')))
                             executor_config["cpu"] = f'{cpuReq}'
-            print(f"Executor_config: {executor_config}")
             ####### Modified
             task_by_id[step_id] = CWLStepOperator(dag=self, task_id=step_id, executor_config=executor_config)
             for step_out_id, _ in get_items(step_data["out"]):

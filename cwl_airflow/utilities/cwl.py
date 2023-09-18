@@ -645,7 +645,51 @@ def execute_workflow_step(
         workflow=workflow_step_path,
         cwl_args=default_cwl_args
     )
+
+
+    ######### Modified
+    workflow_tool = workflow_data.tool
+    dockerReqs = {}
+    # remove dockerReq at each step if the step contains it 
+    # go to each step
+    for step_id, step_data in get_items(workflow_tool["steps"]):
+        # find the run of the step
+        run = step_data["run"]
+        # iter through the requirements
+        for _, reqs in get_items(run, "requirements"):
+            for req in reqs:
+                # if docker requirement, add to dictionary so that we can remove it
+                if req["class"] == "DockerRequirement":
+                    dockerReqs[step_id] = req
+
+    # erase dockerReq from the run
+    for step_to_remove, dockerReq in dockerReqs.items():
+        for step_id, step_data in get_items(workflow_tool["steps"]):
+            if step_to_remove == step_id:
+                run = step_data["run"]
+                for _, reqs in get_items(run, "requirements"):
+                    reqs.remove(dockerReq)
+    ## update workflow_data['DockerRequirement'] to be none
+    ## maybe also update job data 
+    ## before the following, clean up the DockerRequirement!
+
+    ## this should remove the workflow docker Requirement
+    dockerReq = []
+    for req in workflow_data.requirements:
+        for _, val in get_items(req, "class"):
+            if val == "DockerRequirement":
+                dockerReq.append(req)
+    for req in dockerReq:
+        workflow_data.requirements.remove(req)
     
+    #save and reload the workflow data
+    os.remove(workflow_step_path)
+    dump_json(workflow_tool, workflow_step_path)
+    workflow_data = slow_cwl_load(
+        workflow=workflow_step_path,
+        cwl_args=default_cwl_args
+    )
+    ######## Modified
     skipped = True
     step_outputs = {output_id: None for output_id, _ in get_items(workflow_data.tool["outputs"])}
     if need_to_run(workflow_data, job_data, task_id):
@@ -653,6 +697,7 @@ def execute_workflow_step(
         _stderr = sys.stderr                               # to trick the logger
         sys.stderr = sys.__stderr__
         step_outputs, step_status = executor(
+            # workflow_data is the process
             workflow_data,
             job_data,
             RuntimeContext(default_cwl_args)
@@ -736,7 +781,6 @@ def load_job(
     
     default_cwl_args = get_default_cwl_args(cwl_args)
     cwd = default_cwl_args["inputs_folder"] if cwd is None else cwd
-
     loading_context = setup_loadingContext(
         LoadingContext(default_cwl_args),
         RuntimeContext(default_cwl_args),
