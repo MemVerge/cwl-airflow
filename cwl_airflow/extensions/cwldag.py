@@ -142,8 +142,8 @@ class CWLDAG(DAG):
                     
             for _, hints in get_items(run, "hints"):
                 for hint in hints:
-                    if req["class"] == "DockerRequirement":
-                        executor_config["image"] = req["dockerPull"]
+                    if hint["class"] == "DockerRequirement":
+                        executor_config["image"] = hint["dockerPull"]
                     if hint["class"] == "ResourceRequirement":
                         if "ramMin" in hint:
                             memReq = max(int(hint["ramMin"]), int(executor_config.get("mem",'4096')))
