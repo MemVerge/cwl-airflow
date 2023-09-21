@@ -845,7 +845,9 @@ def fast_cwl_step_load(workflow, target_id, cwl_args=None, location=None):
         workflow=workflow,
         cwl_args=default_cwl_args
     )
-
+    # modified
+    workflow_tool = embed_all_runs(workflow_tool, cwl_args=default_cwl_args)
+    # modified
     selected_step = list(get_items(workflow_tool["steps"], target_id))[0][1]
 
     workflow_steps.append(selected_step)

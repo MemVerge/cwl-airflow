@@ -8,7 +8,9 @@ from airflow.utils.dates import days_ago
 from cwl_airflow.utilities.cwl import (
     fast_cwl_load,
     get_items,
-    get_default_cwl_args
+    get_default_cwl_args,
+    fast_cwl_step_load,
+    embed_all_runs
 )
 from cwl_airflow.extensions.operators.cwlstepoperator import CWLStepOperator
 from cwl_airflow.extensions.operators.cwljobdispatcher import CWLJobDispatcher
@@ -59,7 +61,8 @@ class CWLDAG(DAG):
             dag=self,                               # need dag=self otherwise new operator will not get proper default_args
             task_id="CWLJobGatherer"
         ) if gatherer is None else gatherer
-
+        self.workflow_tool = embed_all_runs(
+            self.workflow_tool, cwl_args=kwargs["default_args"]["cwl"])
         self.__assemble()
 
 
@@ -126,9 +129,9 @@ class CWLDAG(DAG):
             # would dockerRequirement be in the step_data?
             # get dockerRequirement from step_data and check whether local is specified
             # also need to get ResourceRequirement
-
             ####### Modified
             executor_config = {}
+            # if the run has reference: replace the reference with the CommentedMap of that step using fast_cwl_step_load
             run = step_data["run"]
             for _, reqs in get_items(run, "requirements"):
                 for req in reqs:
