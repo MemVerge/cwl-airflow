@@ -62,7 +62,7 @@ class CWLDAG(DAG):
             task_id="CWLJobGatherer"
         ) if gatherer is None else gatherer
         self.workflow_tool = embed_all_runs(
-            self.workflow_tool, cwl_args=kwargs["default_args"]["cwl"])
+            self.workflow_tool, cwl_args=kwargs["default_args"]["cwl"], location=self.workflow)
         self.__assemble()
 
 
